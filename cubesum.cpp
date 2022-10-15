@@ -1,6 +1,6 @@
 //oeis A157026
 //
-//g++ -std=c++20 ./singlePrimeCube.cpp -o singlePrimeCube
+//g++ -std=c++20 ./cubesum.cpp -o cubesum
 //
 //Finds N for N^3=A^3+B^3+C^3 where N,A,B,C are unique positive integers
 //see prime.cfg
@@ -47,8 +47,8 @@ void runinput(void)
 
 		if ( input=="q" || input=="quit" )
 		{
-			std::cout << "User exit\n";
-			std::cout << "Closing threads\n";
+			std::cout << "#User exit\n";
+			std::cout << "#Closing threads\n";
 
 			// Wait until main() sends data
 			unique_lock<std::mutex> lck(tdmtx);
@@ -74,8 +74,8 @@ void runinput(void)
 			};
 		}
 		if(no_threads==1){
-			cout << "Threads finished\n";
-			cout << "Press enter\n";
+			cout << "#Threads finished\n";
+			cout << "#Press enter\n";
 			threads_active=0;
 		}
 
@@ -254,7 +254,7 @@ int main( int argc, char *argv[] ){
 					if(tc<=0){tc=1;}
 				}else if(	word=="start"	){
 					start=stoi(value); 
-					if(start<=0){start=1;}
+					if(start<0){start=0;}
 				}else if(	word=="end" ){
 					target=stoi(value); 
 					if(target<=0){target=1;}
@@ -270,7 +270,7 @@ int main( int argc, char *argv[] ){
 				}else if(	word=="clear_file" ){
 					clear_file=stoi(value);
 				}
-				cout << word << "=" << value << "\n";
+				cout << "#" << word << "=" << value << "\n";
 				word="";
 			}
 		}

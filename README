@@ -1,0 +1,28 @@
+
+Multithreaded variant of the program "singlePrimeCube" in https://github.com/Kaelygon/cubeprime
+
+Finds N with property that N^3=A^3+B^3+C^3 multithreaded 
+OEIS A157026 https://oeis.org/A157026/
+A,B,C>=0 N>2 A!=B!=C
+
+Usage ./cubesum [config file]
+
+If no argument is given, default file is ./prime.cfg, if file or some elements dont exist the program uses following default values:
+
+	thread_count=1					# thread count
+	start=0							# start
+	end=1000						# end
+	progress_file=lastSolve.txt		# store last computed A
+	thread_file_suffix=x			# thread logs output file suffix e.g. x = 11x.txt 
+	work_directory=./				# thread and progress files location
+	clear_file=0					# clear thread and progress files before compute
+	update_rate=256					# log threads progress every update_rate
+
+Elements order don't matter in config file. Comment lines with '#'
+
+Results are stored in [work_directory]/TIDx.txt where TID is thread id
+
+./datath/peak.sh: manual grep for any found matches, least and most progressed core. Handy findig out which thread files have results.
+
+You can enter q, quit during run and the program will save last solved A to [work_directory]/[progress_file]
+Once finished press enter
