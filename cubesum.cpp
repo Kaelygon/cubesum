@@ -114,11 +114,10 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
   			unique_lock<mutex> lck(tdmtx);
 			while (!threadready) cv.wait(lck);
 				bool isactive = active_thread[tdid];
-				__uint64_t last=last_compute[tdid]; 
 
 			//check if closing threads
 			if(isactive==0){
-				last=a-tdinc;
+				last_compute[tdid]=a-tdinc;
 				return;
 			}
 
