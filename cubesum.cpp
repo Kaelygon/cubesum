@@ -33,9 +33,11 @@ string input;
 
 void readinput(void)
 {	
+	string strtmp="";
 	while(1){ 
-		getline(cin, input);
-		if(input=="" && !threads_active){break;}
+		getline(cin, strtmp);
+		if(!threads_active){break;}
+		input=strtmp;
 	}
 }
 
