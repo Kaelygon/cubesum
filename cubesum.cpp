@@ -5,6 +5,11 @@
 //Finds N for N^3=A^3+B^3+C^3 where N,A,B,C are unique positive integers
 //see prime.cfg
 //
+#include <iostream>
+#include <vector>
+#include <sstream>
+#include <fstream>
+#include <string>
 #include <thread>
 #include <unistd.h>
 #include <atomic>
@@ -13,7 +18,20 @@ using namespace std;
 
 #include "./include/kael128i.h"
 
-#define logSearch 1
+#define searchAlg 3
+
+//0=binary
+//1=base 2
+//2=base 10
+//3=base 16	
+
+#if searchAlg==1
+	#include "./include/tabp2.h"
+#elif searchAlg==2
+	#include "./include/tabp10.h"
+#elif searchAlg==3
+	#include "./include/tabp16.h"
+#endif
 
 #include <condition_variable>
 #include <mutex>
@@ -83,14 +101,14 @@ void runinput(void)
 
 	}
 	
-	waitcmd.join();
+	waitcmd.detach();
 	return;
 }
 
 
 //compute,i,tc,tdsrt,tdinc,target3
 //thread(compute,tdsrt,tdinc,target3)
-void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const  __uint128_t tdinc, const  __uint128_t target, const  __uint128_t tdtarg3, const string work_directory, const string thread_file_suffix)
+void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const  __uint128_t tdinc, const  __uint128_t tdtarg, const  __uint128_t tdtarg3, const string work_directory, const string thread_file_suffix)
 {
 	ofstream tdfile;
 	tdfile.open(work_directory+to_string(tdid)+thread_file_suffix+".txt", ios::out | ios::app);
@@ -99,16 +117,20 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 	__uint128_t a3,b3,c3,ab3,abc3,a,b,c;
 	int inci;
 
-	#if !logSearch
+	#if searchAlg==1||searchAlg==2||searchAlg==3
+		__uint128_t ctarg,inc;
+	#elif searchAlg==0
 		__uint128_t upb,cur;
 	#endif
 
+	__uint64_t updateinc=0;
 	for(a=tdsrt;true;a+=tdinc){// A //apply offsets per thread
+		updateinc++;
 
 		a3=a*a*a;
-		if(a3>tdtarg3){break;}
-
-		if( fastmod(a-tdid,update_rate)==0 ){
+		if(3*a3>tdtarg3){break;}
+		if( updateinc==update_rate ){
+			updateinc=0;
 
 			//make sure writing is not in progress
   			unique_lock<mutex> lck(tdmtx);
@@ -129,34 +151,18 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 			b3=b*b*b;
 			ab3=a3+b3;
 
-			if(ab3>tdtarg3){break;}
+			if(a3+2*b3>tdtarg3){break;}
 			
 			//C
 				c=b+1;
 				c3=c*c*c;
+				__uint128_t asdf=ab3+c3;
 				if((ab3+c3)>tdtarg3){break;}
-
+				
 				//search algorithms for C	
-				#if logSearch
-					//log search c //faster with large numbers, target>300000, varies cpu to cpu
-					__uint128_t tdtarget=tdtarg3-ab3;
-					for(inci=ui128log10(c); inci>=0; inci-=1){ //test increment 10^i , 10^(i-1) ... 10^2, 10^1
-
-						__uint128_t inc = ui128pow10(inci);
-						while(c*c*c<tdtarget){
-							c+=inc;
-						}
-						c-=inc;
-					}
-					while(c*c*c<tdtarget){ //1 increment
-						c+=1;
-					}
-
-					c3=c*c*c;
-					abc3=ab3+c3;
-				#else
+				#if searchAlg==0
 					//binary search c
-					upb = target-1;	//upper bound
+					upb = tdtarg-1;	//upper bound
 					cur = (c+upb)/2;	//current estimate
 					while(c <= upb)
 					{
@@ -172,16 +178,57 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 						}
 						cur = (c+upb)/2;
 					}
+				#elif searchAlg==1
+					//bitwise base 2 search
+					ctarg=tdtarg3-ab3;
+					for(inci=ui128log2(c)+1; inci>=0; inci-=1){ //test increment 2^i , 2^(i-1) ... 2^2, 2^1, 2^0
+						inc = tabp2[inci];
+						c=c|inc;
+						if(c*c*c>ctarg){
+							c=c^inc;
+						}
+					}
+					c+=1;
+					c3=c*c*c;
+					abc3=ab3+c3;
+				#elif searchAlg==2
+					//base 10 search c //faster than binary search with large numbers, target>150 000, varies cpu to cpu
+					ctarg=tdtarg3-ab3;
+					for(inci=ui128log10(c)+1; inci>=0; inci-=1){ //test increment 10^i , 10^(i-1) ... 10^2, 10^1, 10^0
+
+						inc = tabp10[inci];
+						while(c*c*c<ctarg){
+							c+=inc;
+						}
+						c-=inc;
+					}
+					c+=inc;
+
+					c3=c*c*c;
+					abc3=ab3+c3;
+				#elif searchAlg==3
+					//base 16 search c
+					ctarg=tdtarg3-ab3;
+					for(inci=ui128log16(c)+1; inci>=0; inci-=1){ //test increment 16^i , 16^(i-1) ... 16^2, 16^1, 16^0
+
+						inc = tabp16[inci];
+						while(c*c*c<ctarg){
+							c+=inc;
+						}
+						c-=inc;
+					}
+					c+=inc;
+
+					c3=c*c*c;
+					abc3=ab3+c3;
 				#endif
 
 				if(abc3!=tdtarg3){continue;}
 				else{
 					found[tdid]++;
 					string write_out =
-						  ui128tos(tdtarg3)
+						ui128tos(tdtarg3)
 						+ " = "
-						+ ui128tos(target)
-						+ "^3 = "
 						+ ui128tos(a) + "^3+"
 						+ ui128tos(b) + "^3+"
 						+ ui128tos(c) + "^3"
@@ -231,7 +278,7 @@ int main( int argc, char *argv[] ){
 
 		//parser
 		string word="";
-		for(int i=0;i<config_string.size();i++){ //word before '='
+		for(int i=0; (config_string[i]!='?') && (i<config_string.size()) ;i++){ //word before '='
 			if(config_string[i]!='='){
 				word+=config_string[i];
 				if(config_string[i]=='#'){//skip comments
@@ -256,7 +303,7 @@ int main( int argc, char *argv[] ){
 				}else if(	word=="start"	){
 					start=stoi(value); 
 					if(start<0){start=0;}
-				}else if(	word=="end" ){
+				}else if(	word=="target" ){
 					target=stoi(value); 
 					if(target<=0){target=1;}
 				}else if(	word=="progress_file"){
@@ -308,8 +355,7 @@ int main( int argc, char *argv[] ){
 		if(word!=""){
 			start=stoi(word);
 		}
-	}else{
-		start=0;
+		cout << "#progress_file=" << ui128tos(start) << "\n";
 	}
 	
 
