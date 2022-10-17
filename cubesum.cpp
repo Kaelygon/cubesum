@@ -70,8 +70,7 @@ void runinput(void)
 			std::cout << "#User exit\n";
 			std::cout << "#Closing threads\n";
 
-			// Wait until main() sends data
-			unique_lock<std::mutex> lck(tdmtx);
+			unique_lock<mutex> lck(tdmtx);
 			threadready=0;
 				//do stuff
 				update_rate=1;
@@ -129,7 +128,7 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 
 		a3=a*a*a;
 		if(3*a3>tdtarg3){break;}
-		if( updateinc==update_rate ){
+		if( updateinc>update_rate ){
 			updateinc=0;
 
 			//make sure writing is not in progress
