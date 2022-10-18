@@ -5,16 +5,17 @@
 
 using namespace std;
 
-template <class T>
-inline T ui128pow( T m, T n) //128-bit pow. Does not work for m^0
-{
-	T o=m;
+//128 minus count leading zeros ui128 
+inline int iclz_ui128 (__uint128_t u) {
+	uint64_t hi = u>>64;
+	uint64_t lo = u;
 
-	while(n>1){
-		n--;
-		o*=m;
-	}
-	return o;
+	return  
+		hi ? 
+		 	lo&hi ?  64-__builtin_clzll(lo) : 0 							//hi true  -> lo&hi ? 1 : 0
+			:
+			lo&hi ? 128-__builtin_clzll(hi) : 64-__builtin_clzll(lo)		//hi false -> lo&hi ? 2 : 1
+	;
 }
 
 template <class T>

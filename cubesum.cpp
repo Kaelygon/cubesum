@@ -18,21 +18,6 @@ using namespace std;
 
 #include "./include/kael128i.h"
 
-#define searchAlg 3
-
-//0=binary
-//1=base 2
-//2=base 10
-//3=base 16	
-
-#if searchAlg==1
-	#include "./include/tabp2.h"
-#elif searchAlg==2
-	#include "./include/tabp10.h"
-#elif searchAlg==3
-	#include "./include/tabp16.h"
-#endif
-
 #include <condition_variable>
 #include <mutex>
 
@@ -100,13 +85,11 @@ void runinput(void)
 
 	}
 	
-	waitcmd.detach();
+	waitcmd.detach(); //will not free memory due to cin
 	return;
 }
 
-
-//compute,i,tc,tdsrt,tdinc,target3
-//thread(compute,tdsrt,tdinc,target3)
+//threads compute
 void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const  __uint128_t tdinc, const  __uint128_t tdtarg, const  __uint128_t tdtarg3, const string work_directory, const string thread_file_suffix)
 {
 	ofstream tdfile;
@@ -114,20 +97,16 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 
 	//init vars
 	__uint128_t a3,b3,c3,ab3,abc3,a,b,c;
-	int inci;
-
-	#if searchAlg==1||searchAlg==2||searchAlg==3
-		__uint128_t ctarg,inc;
-	#elif searchAlg==0
-		__uint128_t upb,cur;
-	#endif
+	__uint128_t ctarg,r0;
 
 	__uint64_t updateinc=0;
-	for(a=tdsrt;true;a+=tdinc){// A //apply offsets per thread
+	for(a=tdsrt;true;a+=tdinc){ //apply offsets per thread
+	// A
 		updateinc++;
 
 		a3=a*a*a;
 		if(3*a3>tdtarg3){break;}
+		
 		if( updateinc>update_rate ){
 			updateinc=0;
 
@@ -145,82 +124,32 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 			tdfile << (string)("#a[" + to_string(tdid) + "]: " + ui128tos(a) + "\n") << flush;
 		}
 		
-		for( b=a+1; b<tdtarg3+1; b++){// B
+		for( b=a+1; b<tdtarg3+1; b++){
+		// B
 
 			b3=b*b*b;
 			ab3=a3+b3;
-
 			if(a3+2*b3>tdtarg3){break;}
 			
 			//C
 				c=b+1;
 				c3=c*c*c;
-				__uint128_t asdf=ab3+c3;
 				if((ab3+c3)>tdtarg3){break;}
-				
-				//search algorithms for C	
-				#if searchAlg==0
-					//binary search c
-					upb = tdtarg-1;	//upper bound
-					cur = (c+upb)/2;	//current estimate
-					while(c <= upb)
-					{
-						c3=cur*cur*cur;
-						abc3=ab3+c3;
-						if(abc3<tdtarg3)
-							c = cur+1;
-						else if(abc3==tdtarg3)
-						{
-							break;
-						}else{
-							upb = cur-1;
-						}
-						cur = (c+upb)/2;
-					}
-				#elif searchAlg==1
-					//bitwise base 2 search
-					ctarg=tdtarg3-ab3;
-					for(inci=ui128log2(c)+1; inci>=0; inci-=1){ //test increment 2^i , 2^(i-1) ... 2^2, 2^1, 2^0
-						inc = tabp2[inci];
-						c=c|inc;
-						if(c*c*c>ctarg){
-							c=c^inc;
-						}
-					}
-					c+=1;
-					c3=c*c*c;
-					abc3=ab3+c3;
-				#elif searchAlg==2
-					//base 10 search c //faster than binary search with large numbers, target>150 000, varies cpu to cpu
-					ctarg=tdtarg3-ab3;
-					for(inci=ui128log10(c)+1; inci>=0; inci-=1){ //test increment 10^i , 10^(i-1) ... 10^2, 10^1, 10^0
 
-						inc = tabp10[inci];
-						while(c*c*c<ctarg){
-							c+=inc;
-						}
-						c-=inc;
+					r0=1;
+					c=1;	
+					ctarg=tdtarg3-ab3;
+
+					//quadratic convergence
+					r0 <<= (iclz_ui128(ctarg) + 2) / 3; //ceil(cilz / 3)
+					do{
+						c = r0;
+						r0 = (2*c+ctarg/(c*c))/3;
 					}
-					c+=inc;
+					while (r0 < c);
 
 					c3=c*c*c;
 					abc3=ab3+c3;
-				#elif searchAlg==3
-					//base 16 search c
-					ctarg=tdtarg3-ab3;
-					for(inci=ui128log16(c)+1; inci>=0; inci-=1){ //test increment 16^i , 16^(i-1) ... 16^2, 16^1, 16^0
-
-						inc = tabp16[inci];
-						while(c*c*c<ctarg){
-							c+=inc;
-						}
-						c-=inc;
-					}
-					c+=inc;
-
-					c3=c*c*c;
-					abc3=ab3+c3;
-				#endif
 
 				if(abc3!=tdtarg3){continue;}
 				else{
@@ -236,8 +165,6 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 					tdfile << write_out << flush;
 				}
 			//EOF C
-
-
 		}
 	}
 
