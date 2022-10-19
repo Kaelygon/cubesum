@@ -96,7 +96,7 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 	tdfile.open(tfil+".txt", ios::out | ios::app);
 
 	//init vars
-	__uint128_t a3,b3,c3,ab3,a,b,c;
+	__uint128_t a3,b3,ab3,a,b,c;
 	__uint128_t ctarg,r0;
 
 	__uint32_t updateinc=0;
@@ -132,34 +132,30 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 			if(a3+2*b3>tdtarg3){break;}
 			
 			//C
-				c=b+1;
-				c3=c*c*c;
-				if((ab3+c3)>tdtarg3){break;}
+				ctarg=tdtarg3-ab3; //ctarg==c*c*c
 
-					ctarg=tdtarg3-ab3; //ctarg==c*c*c
-
-					//quadratic convergence
-					r0 = 1<<( iclz_ui128(ctarg) / 3); //1<<ceil((128-CLZ+2) / 3)
-					do{
-						c = r0;
-						r0 = (2*c + ctarg/(c*c))/3 ;
-					}
-					while (r0 < c);
-
-				if((ab3+c*c*c)!=tdtarg3){continue;}
-				else{
-					found[tdid]++;
-					string write_out =
-						ui128tos(tdtarg3)
-						+ " = "
-						+ to_string(uint64_t(a)) + "^3+"
-						+ to_string(uint64_t(b)) + "^3+"
-						+ to_string(uint64_t(c)) + "^3"
-						+ "\n"	
-					;
-					tdfile << write_out << flush;
+				//quadratic convergence
+				r0 = 1<<( iclz_ui128(ctarg) / 3); //1<<ceil((128-CLZ+2) / 3)
+				do{
+					c = r0;
+					r0 = (2*c + ctarg/(c*c))/3 ;
 				}
+				while (r0 < c);
 			//EOF C
+
+			if((ab3+c*c*c)!=tdtarg3){continue;}
+
+			found[tdid]++;
+			string write_out =
+				ui128tos(tdtarg3)
+				+ " = "
+				+ to_string(uint64_t(a)) + "^3+"
+				+ to_string(uint64_t(b)) + "^3+"
+				+ to_string(uint64_t(c)) + "^3"
+				+ "\n"
+			;
+			tdfile << write_out << flush;
+			
 		}
 	}
 
