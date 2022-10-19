@@ -11,8 +11,8 @@
 #include <fstream>
 #include <string>
 #include <thread>
-#include <unistd.h>
 #include <atomic>
+#include <chrono>
 
 using namespace std;
 
@@ -29,7 +29,7 @@ bool threadready = true;
 vector <bool> active_thread;
 vector <__uint64_t> found; 
 vector <__uint64_t> last_compute;
-atomic <__uint64_t> update_rate = 256;
+atomic <__uint32_t> update_rate = 256;
 bool threads_active=1;
 string input;
 
@@ -44,9 +44,9 @@ void readinput(void)
 	}
 }
 
-void runinput(void)
+void bgtasks(void)
 {
-	thread waitcmd = thread(readinput);
+	thread inpthread = thread(readinput);
 	
 	while(threads_active==1){
 
@@ -59,7 +59,7 @@ void runinput(void)
 			threadready=0;
 				//do stuff
 				update_rate=1;
-				for(int i=0;i<active_thread.size();i++){
+				for(uint i=0;i<active_thread.size();i++){
 					active_thread[i]=0;
 				}
 			threadready=1;
@@ -68,11 +68,11 @@ void runinput(void)
 			threads_active=0;
 
 		}
-		usleep(100000); //sleep 100ms
+		this_thread::sleep_for(100ms);
 
 		//check if there's active threads
 		bool no_threads=1;
-		for(int i=0;i<active_thread.size();i++){
+		for(uint i=0;i<active_thread.size();i++){
 			if(active_thread[i]==1){
 				no_threads=0;
 			};
@@ -85,22 +85,22 @@ void runinput(void)
 
 	}
 	
-	waitcmd.detach(); //will not free memory due to cin
+	inpthread.detach(); //will not free memory due to cin
 	return;
 }
 
 //threads compute
-void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const  __uint128_t tdinc, const  __uint128_t tdtarg, const  __uint128_t tdtarg3, const string work_directory, const string thread_file_suffix)
+void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const  __uint128_t tdtarg3, const string tfil)
 {
 	ofstream tdfile;
-	tdfile.open(work_directory+to_string(tdid)+thread_file_suffix+".txt", ios::out | ios::app);
+	tdfile.open(tfil+".txt", ios::out | ios::app);
 
 	//init vars
-	__uint128_t a3,b3,c3,ab3,abc3,a,b,c;
+	__uint128_t a3,b3,c3,ab3,a,b,c;
 	__uint128_t ctarg,r0;
 
-	__uint64_t updateinc=0;
-	for(a=tdsrt;true;a+=tdinc){ //apply offsets per thread
+	__uint32_t updateinc=0;
+	for(a=tdsrt;true;a+=tdcount){ //apply offsets per thread
 	// A
 		updateinc++;
 
@@ -117,14 +117,14 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 
 			//check if closing threads
 			if(isactive==0){
-				last_compute[tdid]=a-tdinc;
+				last_compute[tdid]=a-tdcount;
 				return;
 			}
 
-			tdfile << (string)("#a[" + to_string(tdid) + "]: " + ui128tos(a) + "\n") << flush;
+			tdfile << (string)("#a[" + to_string(tdid) + "]: " + to_string(uint64_t(a)) + "\n") << flush;
 		}
 		
-		for( b=a+1; b<tdtarg3+1; b++){
+		for( b=a+1; true; b++){
 		// B
 
 			b3=b*b*b;
@@ -136,30 +136,25 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 				c3=c*c*c;
 				if((ab3+c3)>tdtarg3){break;}
 
-					r0=1;
-					c=1;	
-					ctarg=tdtarg3-ab3;
+					ctarg=tdtarg3-ab3; //ctarg==c*c*c
 
 					//quadratic convergence
-					r0 <<= (iclz_ui128(ctarg) + 2) / 3; //ceil(cilz / 3)
+					r0 = 1<<( iclz_ui128(ctarg) / 3); //1<<ceil((128-CLZ+2) / 3)
 					do{
 						c = r0;
-						r0 = (2*c+ctarg/(c*c))/3;
+						r0 = (2*c + ctarg/(c*c))/3 ;
 					}
 					while (r0 < c);
 
-					c3=c*c*c;
-					abc3=ab3+c3;
-
-				if(abc3!=tdtarg3){continue;}
+				if((ab3+c*c*c)!=tdtarg3){continue;}
 				else{
 					found[tdid]++;
 					string write_out =
 						ui128tos(tdtarg3)
 						+ " = "
-						+ ui128tos(a) + "^3+"
-						+ ui128tos(b) + "^3+"
-						+ ui128tos(c) + "^3"
+						+ to_string(uint64_t(a)) + "^3+"
+						+ to_string(uint64_t(b)) + "^3+"
+						+ to_string(uint64_t(c)) + "^3"
 						+ "\n"	
 					;
 					tdfile << write_out << flush;
@@ -204,7 +199,7 @@ int main( int argc, char *argv[] ){
 
 		//parser
 		string word="";
-		for(int i=0; (config_string[i]!='?') && (i<config_string.size()) ;i++){ //word before '='
+		for(uint i=0; (config_string[i]!='?') && (i<config_string.size()) ;i++){ //word before '='
 			if(config_string[i]!='='){
 				word+=config_string[i];
 				if(config_string[i]=='#'){//skip comments
@@ -213,7 +208,7 @@ int main( int argc, char *argv[] ){
 			}else{
 				string value="";
 				i++;
-				for(i;i<config_string.size();i++){ //value after '=' or '#'
+				for(i=i;i<config_string.size();i++){ //value after '=' or '#'
 					if(config_string[i]=='#'){//skip comments
 						while(config_string[i]!='\n'){i++;}break;
 					}
@@ -281,43 +276,39 @@ int main( int argc, char *argv[] ){
 		if(word!=""){
 			start=stoi(word);
 		}
-		cout << "#progress_file=" << ui128tos(start) << "\n";
+		cout << "#progress_file=" << to_string((uint64_t)start) << "\n";
 	}
 	
 
 	//calculate A range offsets per thread
 	static const __uint128_t tdsrt=start; 	//A start
-	static const __uint128_t tdinc=tc; 		//A increment
 
-	static const __uint128_t target3=target*target*target; //(s+1)^3
+	static const __uint128_t target3=target*target*target;
 
 	//BOF tasks
 	thread *task = new thread[tc];
-	thread runcmd;
+	thread bgthread;
 
-	for(int i=0;i<tc;i++){  // spawn threads
+	for(int i=0;i<tc;i++){  //spawn threads
 		found.push_back(0);
 		active_thread.push_back(1);
 		last_compute.push_back(0);
 		task[i] = thread(
 			compute,			//thread function
 			i,					//thread id
-			tc,					//thread count
+			tc,					//thread count and A increment
 			tdsrt+i,			//thread start
-			tdinc,				//thread A incrementor
-			target,				//
-			target3,			//
-			work_directory,		//
-			thread_file_suffix	//
+			target3,			//N^3
+			work_directory+to_string(i)+thread_file_suffix		//thread file name
 		);
 	}
 
-	//wait for commands
-	runcmd = thread(runinput);
+	//background tasks
+	bgthread = thread(bgtasks);
 
 	for(int i=0;i<tc;i++){
-		// synchronize threads:
-		task[i].join();                // pauses until first finishes
+		//synchronize threads:
+		task[i].join();
 	}
 	
   	delete [] task;
@@ -344,7 +335,7 @@ int main( int argc, char *argv[] ){
   	last_compute.clear();
   	active_thread.clear();
 
-	runcmd.join();
-	exit(0);
+	bgthread.join();
+	return 0;
 }
 

@@ -12,7 +12,9 @@
 				"-std=c++20",
 				"${file}",
 				"-o",
-				"${fileDirname}/${fileBasenameNoExtension}"
+				"${fileDirname}/${fileBasenameNoExtension}",
+				"-mlzcnt",
+				"-Wall"
 			],
 			"options": {
 				"cwd": "/usr/bin"
