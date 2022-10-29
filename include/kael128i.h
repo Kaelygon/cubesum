@@ -16,6 +16,23 @@ inline int iclz_ui128 (__uint128_t u) {
 	;
 }
 
+//unsigned integer quadruple cube root
+__uint128_t uiqcbrt(__uint128_t n){
+
+	__uint128_t r;
+	int lz=iclz_ui128(n)/3;
+	__uint128_t r0=1<<lz;
+
+	do{ //quadratic iterations c = ctarg-(c^3-ctarg)/derivative(c^3-ctarg,c)
+		r = r0;
+		r0 = (2*r + n/(r*r))/3 ;
+	}
+	while (r0 < r);
+
+	return (r*r*r==n) ? r : 0;
+		
+}
+
 template <class T>
 string ui128tos(T n){//128 uint to string
 	if(n==0){return (string)"0";}

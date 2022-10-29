@@ -9,12 +9,12 @@
 			"command": "/usr/bin/g++",
 			"args": [
 				"-g",
-				"-std=c++20",
 				"${file}",
 				"-o",
 				"${fileDirname}/${fileBasenameNoExtension}",
 				"-mlzcnt",
 				"-Wall"
+//				,"-lboost_system"
 			],
 			"options": {
 				"cwd": "/usr/bin"

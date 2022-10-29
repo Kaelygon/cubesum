@@ -13,7 +13,8 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
-
+//#include <boost/math/special_functions/cbrt.hpp>
+//#include <boost/thread.hpp>
 using namespace std;
 
 #include "./include/kael128i.h"
@@ -85,18 +86,18 @@ void bgtasks(void)
 
 	}
 	
-	inpthread.detach(); //will not free memory due to cin
+	inpthread.detach(); //will not free memory
 	return;
 }
 
 //threads compute
-void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const  __uint128_t tdtarg3, const string tfil)
+void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const  __uint128_t tdtarg, const  __uint128_t tdtarg3, const string tfil)
 {
 	ofstream tdfile;
 	tdfile.open(tfil+".txt", ios::out | ios::app);
 
 	//init vars
-	__uint128_t a3,b3,ab3,a,b,c;
+	__uint128_t a3,b3,a,b,c;
 	__uint128_t ctarg,r0;
 
 	__uint32_t updateinc=0;
@@ -123,27 +124,20 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 
 			tdfile << (string)("#a[" + to_string(tdid) + "]: " + to_string(uint64_t(a)) + "\n") << flush;
 		}
-		
+
+		r0 = tdtarg; //1<<ceil((128-CLZ) / 3)
 		for( b=a+1; true; b++){
-		// B
+			b3=b*b*b; 
+			ctarg=tdtarg3-a3-b3; //ctarg==c*c*c
+			if(b3>ctarg){break;} //b>c
 
-			b3=b*b*b;
-			ab3=a3+b3;
-			if(a3+2*b3>tdtarg3){break;}
-			
-			//C
-				ctarg=tdtarg3-ab3; //ctarg==c*c*c
+			do{
+				c = r0;
+				r0 = (2*c + ctarg/(c*c))/3 ;
+			}
+			while (r0 < c);
 
-				//quadratic convergence
-				r0 = 1<<( iclz_ui128(ctarg) / 3); //1<<ceil((128-CLZ+2) / 3)
-				do{
-					c = r0;
-					r0 = (2*c + ctarg/(c*c))/3 ;
-				}
-				while (r0 < c);
-			//EOF C
-
-			if((ab3+c*c*c)!=tdtarg3){continue;}
+			if((c*c*c)!=ctarg){continue;} 
 
 			found[tdid]++;
 			string write_out =
@@ -294,6 +288,7 @@ int main( int argc, char *argv[] ){
 			i,					//thread id
 			tc,					//thread count and A increment
 			tdsrt+i,			//thread start
+			target,				//N
 			target3,			//N^3
 			work_directory+to_string(i)+thread_file_suffix		//thread file name
 		);
@@ -331,7 +326,7 @@ int main( int argc, char *argv[] ){
   	last_compute.clear();
   	active_thread.clear();
 
-	bgthread.join();
+	bgthread.detach(); //will not free memory
 	return 0;
 }
 
