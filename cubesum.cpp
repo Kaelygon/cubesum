@@ -97,16 +97,15 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 	tdfile.open(tfil+".txt", ios::out | ios::app);
 
 	//init vars
-	__uint128_t a3,b3,a,b,c;
-	__uint128_t ctarg,r0;
-
+	__uint128_t a3,a,b,c;
+	__uint128_t ctarg,c0;
+	c0 = tdtarg-1;
 	__uint32_t updateinc=0;
-	for(a=tdsrt;true;a+=tdcount){ //apply offsets per thread
+	for(a=tdsrt;a<tdtarg;a+=tdcount){ //apply offsets per thread
 	// A
 		updateinc++;
 
 		a3=a*a*a;
-		if(3*a3>tdtarg3){break;}
 		
 		if( updateinc>update_rate ){
 			updateinc=0;
@@ -125,17 +124,15 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 			tdfile << (string)("#a[" + to_string(tdid) + "]: " + to_string(uint64_t(a)) + "\n") << flush;
 		}
 
-		r0 = tdtarg; //1<<ceil((128-CLZ) / 3)
-		for( b=a+1; true; b++){
-			b3=b*b*b; 
-			ctarg=tdtarg3-a3-b3; //ctarg==c*c*c
-			if(b3>ctarg){break;} //b>c
+		c0=tdtarg-1;
+		for( b=a+1; b<c0; b++){ // +90% of compute time is spent at b loop
+			ctarg=tdtarg3-a3-b*b*b; //ctarg==c*c*c
 
-			do{
-				c = r0;
-				r0 = (2*c + ctarg/(c*c))/3 ;
+			do{ //quadratic iterations c = ctarg-(c^3-ctarg)/derivative(c^3-ctarg,c)
+				c = c0;
+				c0 = (3*c + ctarg/(c*c))/4 ;
 			}
-			while (r0 < c);
+			while (c0 < c);
 
 			if((c*c*c)!=ctarg){continue;} 
 
@@ -160,8 +157,8 @@ void compute(const int tdid, const int tdcount, const  __uint128_t tdsrt, const 
 }
 
 
-int main( int argc, char *argv[] ){
 //finds target for target^3=A^3+B^3+C^3 	//check set [target,start] 	//time increases proportionately s^2 
+int main( int argc, char *argv[] ){
 
 	//BOF config
 	
@@ -223,7 +220,7 @@ int main( int argc, char *argv[] ){
 					thread_file_suffix=value;
 				}else if(	word=="update_rate" ){
 					update_rate=stoi(value); 
-					if(update_rate<=0){update_rate=1;}
+					if(update_rate<=0){update_rate=target;}
 				}else if(	word=="work_directory" ){
 					work_directory=value;
 				}else if(	word=="clear_file" ){
@@ -278,6 +275,8 @@ int main( int argc, char *argv[] ){
 	//BOF tasks
 	thread *task = new thread[tc];
 	thread bgthread;
+
+	target=target*(__float128)0.693361274350634659846548402128973976+1; //max A = t * 3^(2/3)/3
 
 	for(int i=0;i<tc;i++){  //spawn threads
 		found.push_back(0);
