@@ -112,6 +112,9 @@
 		"syncstream": "cpp",
 		"filesystem": "cpp",
 		"allocator": "cpp",
-		"__std_stream": "cpp"
+		"__std_stream": "cpp",
+		"format": "cpp",
+		"__verbose_abort": "cpp",
+		"__memory": "cpp"
 	}
 }

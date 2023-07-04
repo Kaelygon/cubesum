@@ -23,9 +23,9 @@ __uint128_t uiqcbrt(__uint128_t n){
 	int lz=iclz_ui128(n)/3;
 	__uint128_t r0=1<<lz;
 
-	do{ //quadratic iterations c = ctarg-(c^3-ctarg)/derivative(c^3-ctarg,c)
+	do{ //quadratic iterations
 		r = r0;
-		r0 = (2*r + n/(r*r))/3 ;
+		r0 = (3*r + n/(r*r))/4 ;
 	}
 	while (r0 < r);
 
@@ -51,3 +51,34 @@ string ui128tos(T n){//128 uint to string
 
 	return inv;
 }
+
+//unsigned quadruple (precision) integer [3]
+struct uqint3
+{
+    __uint128_t x, y, z;
+};
+struct vqint3
+{
+    __uint128_t x, y, z;
+
+    constexpr vqint3(__uint128_t qx = 0, __uint128_t qy = 0, __uint128_t qz = 0) : x(qx), y(qy), z(qz) {}
+    constexpr vqint3(uqint3 q) : x(q.x), y(q.y), z(q.z) {}
+    inline void printvec() {
+		printf(
+			"%llu^3 + %llu^3 + %llu^3\n",
+			(unsigned long long)(x & 0xFFFFFFFFFFFFFFFF),
+			(unsigned long long)(y & 0xFFFFFFFFFFFFFFFF),
+			(unsigned long long)(z & 0xFFFFFFFFFFFFFFFF)
+		);
+	}
+    string stringvec() { //max 134 char
+		return
+			ui128tos(x) + "^3" + " + " +
+			ui128tos(y) + "^3" + " + " +
+			ui128tos(z) + "^3" 
+		;
+	}
+
+};
+
+//dummy you had duplicate uqint3 in cubesum-cuda
