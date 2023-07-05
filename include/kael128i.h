@@ -1,5 +1,4 @@
-#define MAX__UINT128 (__uint128_t)(-1)
-#define MAX__UINT64 (__uint64_t)(-1)
+
 
 using namespace std;
 
@@ -71,7 +70,7 @@ struct vqint3
 			(unsigned long long)(z & 0xFFFFFFFFFFFFFFFF)
 		);
 	}
-    string stringvec() { //max 134 char
+    string stringvec() const { //max 134 char
 		return
 			ui128tos(x) + "^3" + " + " +
 			ui128tos(y) + "^3" + " + " +
@@ -81,4 +80,4 @@ struct vqint3
 
 };
 
-//dummy you had duplicate uqint3 in cubesum-cuda
+

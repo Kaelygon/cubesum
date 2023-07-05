@@ -17,6 +17,7 @@ If no argument is given, default file is ./prime.cfg, if file or some elements d
 	work_directory=./				# thread and progress files location
 	clear_file=0					# clear thread and progress files before compute
 	update_rate=256					# log thread 0 progress every update_rate
+	algorithm=2						# 0 = Newton's method, 3 = Halley's steps, 2 = __builtin_cbrt
 
 Elements order don't matter in config file. Comment lines with '#'
 Question mark (?) sets end of file
@@ -24,3 +25,15 @@ Question mark (?) sets end of file
 Results are stored in [work_directory]/[results_file]
 
 You can enter q, quit during run and the program will save last solved A to [work_directory]/[progress_file]
+
+Newton's method is what I use primarily
+Halley's steps peforms very similarly to Newton's method. Might perform faster at very large [target]
+__builtin_cbrt is limited to double precision and much slower
+
+Benchmarks time ./cubesum -> real
+start=0, target=999999, thread_count=24, update_rate=0
+Newton's method 1m24.892s 
+Halley's steps  1m30.076s //6.1% slower
+__builtin_cbrt  4m48.030s //3.39x slower
+
+Cool fact 999999^3 = 111111^3+666666^3+888888^3

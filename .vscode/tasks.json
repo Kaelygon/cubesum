@@ -7,18 +7,17 @@
 			"type": "shell",
 			"label": "g++ build active file",
 			"command": "/usr/bin/g++",
-			"args": [
+			"args": [//12.184s baseline
 				"-g",
 				"${file}",
-				"-O3",
-//				"-std=c++20",
-//				"-fsanitize=thread",
+				"-Os",		//207% faster. 
+//				"-fsanitize=thread",	//8% slower
+//				"-fsanitize=address",
 //				"-pthread",
+//				"-Wall",
+				"-lgmp",
 				"-o",
-				"${fileDirname}/${fileBasenameNoExtension}",
-				"-mlzcnt",
-				"-Wall"
-//				,"-lboost_system"
+				"${fileDirname}/${fileBasenameNoExtension}"
 			],
 			"options": {
 				"cwd": "/usr/bin"
