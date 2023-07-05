@@ -21,8 +21,7 @@ using namespace std;
 #include <mutex>
 
 std::mutex tasksMutex;
-std::condition_variable tasksCV;
-bool threadready = true;
+std::mutex updateMutex;
 
 //Mutex for synchronization
 std::vector<std::vector<vqint3>> sharedResults;
@@ -46,6 +45,7 @@ void readinput(void)
 	string strtmp="";
 	while(1){ 
 		getline(cin, strtmp);
+		std::lock_guard<std::mutex> lock(updateMutex);
 		if(!threads_active){break;}
 		input=strtmp;
 	}
@@ -67,13 +67,13 @@ void bgtasks(
 	while(threads_active==1){
 
 		// Check if an update is needed
-		std::unique_lock<std::mutex> updateLock(tasksMutex);
+		std::unique_lock<std::mutex> updateLock(updateMutex);
 		bgtasksCV.wait_for(
 			updateLock, 
 			std::chrono::milliseconds(10), 
 			[&]() {return updateBgtasks;}
 		);
-		if(updateBgtasks){
+		if(updateBgtasks){ //progress update
 			tdfile << "#a[0]: " << bguprate*(loopinc++) << "\n" << flush;
 		}
 		updateBgtasks = false;  // Reset the update flag
@@ -83,15 +83,12 @@ void bgtasks(
 			std::cout << "#User exit\n";
 			std::cout << "#Closing threads\n";
 
-			unique_lock<mutex> lck(tasksMutex);
-			threadready = 0;
+			std::lock_guard<std::mutex> lock(tasksMutex);
+
 			update_rate = 1;
 			for (uint i = 0; i < active_thread.size(); i++) {
 				active_thread[i] = 0;
 			}
-			threadready = 1;
-			lck.unlock();
-			tasksCV.notify_all();
 			threads_active = 0;
 		}
 
@@ -179,15 +176,14 @@ void newtoncbrt(
 		updateinc++;
 		if( updateinc>update_rate ){ //update periodically
 			updateinc=0;
+			std::unique_lock<std::mutex> lock(updateMutex);
 			if(index==0){ //1st thread checks this only
 				updateBgtasks = true;
    				bgtasksCV.notify_one();  // Notify the bgtasks() thread
 			}
 
-			//make sure writing is not in progress
-  			unique_lock<mutex> lck(tasksMutex);
-			while (!threadready) tasksCV.wait(lck);
-				bool isactive = active_thread[index];
+			bool isactive = active_thread[index];
+			lock.unlock();
 
 			//check if closing threads
 			if(isactive==0){
@@ -222,11 +218,22 @@ void newtoncbrt(
 		}
 	}
 
+	std::lock_guard<std::mutex> lock(updateMutex);
 	active_thread[index]=0;
 	last_compute[index]=a;
 	return;
 }
 
+template <typename T>
+T uivalid(std::string word, std::string value){
+	T absvalue;
+	try{ absvalue = abs(stoll(value));
+	}catch(...){
+		std::cout << "#\"" << value << "\"" << " is invalid " << word << "!\n"; 
+		return 0;
+	}
+	return static_cast<T>(absvalue);
+}
 
 //finds target for target^3=A^3+B^3+C^3 	//check set [target,start] 	//time increases proportionately s^2 
 int main( int argc, char *argv[] ){
@@ -279,28 +286,44 @@ int main( int argc, char *argv[] ){
 
 				//only few elements so this unelegant solution will do. std::map?
 				if		(	word=="thread_count" ){
-					tc=stoi(value); 
+					uint64_t absvalue=uivalid<uint64_t>(word,value);
+					tc=absvalue+(absvalue==0); 
 					if(tc<=0){tc=1;}
+					value=to_string(tc);
+
 				}else if(	word=="start"	){
-					start=stol(value); 
+					uint64_t absvalue=uivalid<uint64_t>(word,value);
+					start=absvalue; 
 					if(start<0){start=0;}
+					value=ui128tos(start);
+
 				}else if(	word=="target" ){
-					target=abs(stol(value)); 
+					target=uivalid<__uint128_t>(word,value); 
 					if(target<=1){target=2;}
+					value=ui128tos(target);
+
 				}else if(	word=="progress_file"){
 					progress_file=value;
+
 				}else if(	word=="update_rate" ){
-					bguprate=stol(value);
+					uint64_t absvalue=uivalid<uint64_t>(word,value);
+					bguprate=absvalue;
 					update_rate=bguprate; 
-					if(update_rate<=0){update_rate=target;bguprate=target;}
+					if(bguprate<=0){update_rate=target;bguprate=target;}
+					value=to_string(bguprate);
+
 				}else if(	word=="work_directory" ){
 					work_directory=value;
+
 				}else if(	word=="clear_file" ){
-					clear_file=stol(value);
+					clear_file=uivalid<bool>(word,value); 
+					value=to_string(clear_file);
+
 				}else if(	word=="results_file" ){
 					if(value==""){cout << "#Invalid results_file!\n";}
 					value=work_directory+"sharedResults.txt";
 					results_file=value;
+
 				}
 				cout << "#" << word << "=" << value << "\n";
 				word="";
@@ -353,11 +376,15 @@ int main( int argc, char *argv[] ){
 	MutexVector resultsMutex(tc); // Create vector of resultsMutex
 	
 	for(uint i=0;i<tc;i++){  //spawn threads
+		std::unique_lock<std::mutex> lock(tasksMutex);
 		active_thread.push_back(1);
 		resultsMutex[i] = std::make_unique<std::mutex>();
 		sharedResults.push_back(std::vector<vqint3>());
 		found.push_back(0);
 		last_compute.push_back(0);
+	}
+	
+	for(uint i=0;i<tc;i++){  //spawn threads
 		task[i] = thread(
 			newtoncbrt,			//thread function
 			i,					//thread index

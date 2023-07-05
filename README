@@ -13,7 +13,7 @@ If no argument is given, default file is ./prime.cfg, if file or some elements d
 	start=0						# start point for A + 1
 	target=1000					# target number N
 	progress_file=lastSolve.txt			# store last computed A
-	results_file=sharedResults.txt 		# store valid results
+	results_file=sharedResults.txt 				# store valid results
 	work_directory=./				# thread and progress files location
 	clear_file=0					# clear thread and progress files before compute
 	update_rate=256					# log thread 0 progress every update_rate
@@ -21,9 +21,6 @@ If no argument is given, default file is ./prime.cfg, if file or some elements d
 Elements order don't matter in config file. Comment lines with '#'
 Question mark (?) sets end of file
 
-Results are stored in [work_directory]/[results_file] where TID is thread id
-
-./datath/peak.sh: manual grep for any found matches, least and most progressed core. Handy findig out which thread files have results.
+Results are stored in [work_directory]/[results_file]
 
 You can enter q, quit during run and the program will save last solved A to [work_directory]/[progress_file]
-Once finished press enter

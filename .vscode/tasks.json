@@ -12,6 +12,8 @@
 				"${file}",
 				"-O3",
 //				"-std=c++20",
+//				"-fsanitize=thread",
+//				"-pthread",
 				"-o",
 				"${fileDirname}/${fileBasenameNoExtension}",
 				"-mlzcnt",
